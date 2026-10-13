@@ -27,22 +27,25 @@ class ApiTests(unittest.TestCase):
         req=Request(self.url+path,data=json.dumps(data).encode() if data is not None else None,headers={'Content-Type':'application/json'})
         with urlopen(req) as r:return json.load(r)
     def test_demo_and_import_review(self):
-        initial=self.request('/api/posts')
+        initial=self.request('/api/posts?mode=demo')
+        self.assertEqual(len(initial),4)
         self.assertTrue(all(p['source']=='demo' and not p['url'] for p in initial))
         self.assertTrue(all(len(p['comments'])==3 for p in initial))
-        id=self.request('/api/posts',post())['id']
+        id=self.request('/api/posts',post(import_authorized=True))['id']
         path='/api/posts/'+id
         self.request(path+'/review',{'selected':'B','draft':'Ein manuell bearbeiteter Entwurf.','unsuitable':True})
         saved=next(p for p in self.request('/api/posts') if p['id']==id)
         self.assertEqual(saved['review']['draft'],'Ein manuell bearbeiteter Entwurf.')
         self.assertTrue(saved['review']['unsuitable'])
-        self.request(path+'/regenerate',{})
-        regenerated=next(p for p in self.request('/api/posts') if p['id']==id)
+        demo_path='/api/posts/'+initial[0]['id']
+        self.request(demo_path+'/review',{'selected':'B','draft':'Demo-Bearbeitung','unsuitable':True})
+        self.request(demo_path+'/regenerate',{})
+        regenerated=next(p for p in self.request('/api/posts?mode=demo') if p['id']==initial[0]['id'])
         self.assertNotIn('draft',regenerated['review'])
         self.assertEqual(regenerated['review']['variant'],1)
         self.assertTrue(regenerated['review']['unsuitable'])
     def test_invalid_import_and_origin(self):
-        with self.assertRaises(HTTPError) as exc:self.request('/api/posts',post(url='https://evil.test/'))
+        with self.assertRaises(HTTPError) as exc:self.request('/api/posts',post(url='https://evil.test/',import_authorized=True))
         self.assertEqual(exc.exception.code,400)
         req=Request(self.url+'/api/posts',data=json.dumps(post()).encode(),headers={'Origin':'https://evil.test'})
         with self.assertRaises(HTTPError) as exc:urlopen(req)

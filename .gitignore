@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 .local/
 .venv/
+.env
+.env.*
+*.sqlite*
+*.db
+*.log

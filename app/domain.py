@@ -7,6 +7,7 @@ TOPICS = {
     'Cybersecurity': ['security', 'sicherheit', 'phishing', 'cyber', 'passkey'],
     'Softwareentwicklung': ['software', 'code', 'architektur', 'python', 'entwicklung', 'testing'],
     'Cloud & DevOps': ['cloud', 'devops', 'linux', 'kubernetes', 'deployment'],
+    'Linux & Open Source': ['linux', 'open source', 'opensource'],
     'Microsoft 365': ['microsoft 365', 'teams', 'sharepoint', 'zusammenarbeit'],
     'Weiterbildung': ['weiterbildung', 'lernen', 'kompetenzen', 'transformation', 'lernen'],
 }
@@ -47,7 +48,7 @@ def assess(post, now=None):
     lower = text.lower()
     warnings, reasons = [], []
     try:
-        age = (now - parse_time(post['published_at'])).total_seconds() / 3600
+        age = (now - parse_time(post.get('published_at') or '')).total_seconds() / 3600
         if age < 0:
             reasons.append('Veröffentlichungszeit liegt in der Zukunft.')
         elif age > 24:
@@ -55,6 +56,8 @@ def assess(post, now=None):
     except (ValueError, TypeError):
         age = 1000
         reasons.append('Veröffentlichungszeit fehlt oder ist ungültig.')
+    if post.get('verified') is False and post.get('source') != 'demo':
+        reasons.append('Originaltext, Autorenart und Veröffentlichungszeit müssen menschlich verifiziert werden.')
     if post.get('author_type') != 'person':
         reasons.append('Kein bestätigtes persönliches Profil.')
     # Mentioning a brand alone is deliberately not an advertising signal.
@@ -74,7 +77,7 @@ def assess(post, now=None):
     quality = min(15, len(text.split()) // 8 + (3 if enough else 0))
     components = {'relevance': 40 if topics else 0, 'recency': round(max(0, 25 * (1 - max(0, age) / 24))), 'discussion': discussion, 'quality': quality}
     warnings.append('Regelbasierte Einschätzung; Inhalt und Angaben vor Verwendung prüfen.')
-    if post.get('source') == 'manual':
+    if post.get('source') == 'manual' and not post.get('verified'):
         warnings.append('Autor und Veröffentlichungszeit sind manuelle Angaben, nicht durch LinkedIn verifiziert.')
     return {'eligible': not reasons, 'reasons': reasons, 'warnings': warnings, 'topics': topics,
             'score': sum(components.values()), 'components': components, 'enough_context': enough,
@@ -86,6 +89,7 @@ PERSPECTIVES = {
  'Cybersecurity': ('Neben technischen Maßnahmen lohnt es sich, die Abläufe für Meldung und Reaktion mitzudenken.', 'An welcher Stelle ist die Umsetzung im Alltag am schwierigsten?', 'Sicherheitskompetenz lässt sich gut an konkreten Alltagssituationen und gemeinsam besprochenen Entscheidungen üben.'),
  'Softwareentwicklung': ('Eine kleine, überprüfbare Änderung mit klaren Tests kann helfen, die fachlichen Abwägungen sichtbar zu machen.', 'Welche Abwägung hat eure Entscheidung am stärksten beeinflusst?', 'Für Entwicklungskompetenz ist es hilfreich, auch die Gründe hinter einer technischen Entscheidung gemeinsam zu reflektieren.'),
  'Cloud & DevOps': ('Neben dem Normalbetrieb lohnt es sich, Wiederherstellung und Fehlerfälle ausdrücklich durchzuspielen.', 'Welche Erkenntnis aus dem Betrieb würdest du beim nächsten Durchlauf früher berücksichtigen?', 'Praxisnahe Lernaufgaben zu Betrieb und Fehleranalyse können helfen, technische Zusammenhänge besser zu verstehen.'),
+ 'Linux & Open Source': ('Eine reproduzierbare Beschreibung der Umgebung kann helfen, Beobachtungen und Lösungsansätze gemeinsam zu prüfen.', 'Welche Randbedingungen waren für deinen Lösungsweg entscheidend?', 'Eine kleine praktische Aufgabe mit anschließender Reflexion kann den Transfer von Linux- und Open-Source-Wissen unterstützen.'),
  'Microsoft 365': ('Klare Absprachen über Ablage, Zuständigkeiten und Kommunikation können die Werkzeugwahl sinnvoll ergänzen.', 'Welche Vereinbarung hat die Zusammenarbeit bei euch konkret erleichtert?', 'Digitale Zusammenarbeit braucht neben Bedienwissen auch gemeinsam entwickelte Arbeitsroutinen.'),
  'Weiterbildung': ('Ein konkretes Anwendungsproblem und ein überprüfbares Lernziel können helfen, den nächsten Lernschritt zu bestimmen.', 'Woran würdest du erkennen, dass sich das Gelernte im Arbeitsalltag bewährt?', 'Für den Transfer von IT-Wissen lohnt es sich, Lernzeit und praktische Anwendung zusammen zu planen.'),
 }
